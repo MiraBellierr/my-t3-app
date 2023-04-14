@@ -1,4 +1,4 @@
-import { SignIn, SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
+import { SignInButton, useUser } from "@clerk/nextjs";
 import { type NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
@@ -9,6 +9,8 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
 dayjs.extend(relativeTime);
+
+import { LoadingPage } from "~/components/loading";
 
 const CreatePostWizard = () => {
   const { user } = useUser();
@@ -43,14 +45,27 @@ const PostView = (props: PostWithUser) => {
 
 }
 
-const Home: NextPage = () => {
-  const user = useUser();
+const Feed = () => {
+  const { data, isLoading: postsLoading } = api.posts.getAll.useQuery();
 
-  const { data, isLoading } = api.posts.getAll.useQuery();
-
-  if (isLoading) return <div>Loading...</div>
+  if (postsLoading) return <LoadingPage />;
 
   if (!data) return <div>Something went wrong</div>
+
+  return (
+    <div className="flex flex-col">
+      {[...data, ...data]?.map((fullPost) => (<PostView {...fullPost} key={fullPost.post.id} />))}
+    </div>
+  )
+
+}
+
+const Home: NextPage = () => {
+  const { isLoaded: userLoaded, isSignedIn } = useUser();
+
+  api.posts.getAll.useQuery();
+
+  if (!userLoaded) return <div />
 
   return (
     <>
@@ -62,14 +77,10 @@ const Home: NextPage = () => {
       <main className="flex justify-center h-screen">
         <div className="w-full h-full md:max-w-2xl border-x border-slate-400">
           <div className="border-b border-slate-400 p-4">
-            {!user.isSignedIn && <div className="flex justify-center"><SignInButton /></div>}
-            {user.isSignedIn && <CreatePostWizard />}
-            {user.isSignedIn && <SignOutButton />}
+            {!isSignedIn && <div className="flex justify-center"><SignInButton /></div>}
+            {isSignedIn && <CreatePostWizard />}
           </div>
-          <div className="flex flex-col">
-            {[...data, ...data]?.map((fullPost) => (<PostView {...fullPost} key={fullPost.post.id} />))}
-          </div>
-          <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
+          <Feed />
         </div>
       </main>
     </>
